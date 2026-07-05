@@ -1,0 +1,12 @@
+# rendered autoinstall seeds contain the wifi PSK and password hash
+autoinstall/rendered/
+
+# plaintext vault working copy (only the encrypted secrets.yml is committed)
+ansible/vault/secrets.plain.yml
+
+# local vault password, test artifacts
+.claudius-vault-pass
+*.qcow2
+*.iso
+test/vmlinuz
+test/initrd

@@ -1,0 +1,42 @@
+---
+- name: Map architecture to apt arch
+  ansible.builtin.set_fact:
+    apt_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+
+- name: Install Docker apt signing key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ apt_arch }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_facts['distribution_release'] }} stable
+    filename: docker
+    state: present
+
+- name: Install Docker engine and compose
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Enable and start Docker
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add {{ target_user }} to the docker group
+  ansible.builtin.user:
+    name: "{{ target_user }}"
+    groups: docker
+    append: true

@@ -1,0 +1,74 @@
+#cloud-config
+# Ubuntu 24.04 Server autoinstall template for the claudius box.
+#
+# DO NOT fill secrets into this file. Render it with make-usb.sh, which
+# substitutes ${...} placeholders from 1Password into autoinstall/rendered/
+# (gitignored).
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  timezone: Australia/Brisbane
+
+  identity:
+    hostname: claudius
+    username: claudius
+    # SHA-512 crypt hash, generated at render time from the 1Password item
+    # "Claudius Local Machine" — the hash itself never enters git.
+    password: "${PASSWORD_HASH}"
+
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPe3cFlDZbABQ1x7Fu+tlbHVy6Stnq1h7hV/shtNBcj2 mitchazj@mac"
+
+  storage:
+    layout:
+      name: direct
+
+  # Wi-Fi (the box's ethernet port is usually unplugged). Subiquity applies
+  # this during install; if the installer image can't do Wi-Fi, plug in
+  # ethernet for the install and this section is ignored harmlessly.
+  network:
+    version: 2
+    ethernets:
+      eno1:
+        dhcp4: true
+        optional: true
+    wifis:
+      wlp1s0:
+        dhcp4: true
+        optional: true
+        access-points:
+          "${WIFI_SSID}":
+            password: "${WIFI_PSK}"
+
+  packages:
+    - curl
+    - git
+
+  late-commands:
+    # Clone the setup repo and install a first-boot service that converges
+    # the machine, then disables itself.
+    - curtin in-target -- git clone https://github.com/mitchazj/claudius-setup.git /home/claudius/claudius-setup
+    - curtin in-target -- chown -R claudius:claudius /home/claudius/claudius-setup
+    - |
+      cat > /target/etc/systemd/system/claudius-firstboot.service <<'EOF'
+      [Unit]
+      Description=claudius-setup first boot convergence
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/home/claudius/claudius-setup/bootstrap.sh --local /home/claudius/claudius-setup --user claudius
+      ExecStartPost=/usr/bin/systemctl disable claudius-firstboot.service
+      RemainAfterExit=yes
+      TimeoutStartSec=1800
+
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+    - curtin in-target -- systemctl enable claudius-firstboot.service

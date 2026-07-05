@@ -1,0 +1,53 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          find . -name '*.sh' -print0 | xargs -0 shellcheck
+      - name: ansible-lint
+        run: |
+          pipx install ansible-lint
+          cd ansible && ansible-lint
+
+  converge:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bootstrap from zero
+        run: ./bootstrap.sh --local "$PWD" --ci --user runner
+
+      - name: verify
+        run: sudo TARGET_USER=runner ./test/verify.sh --ci
+
+      - name: idempotence (second run must change nothing)
+        run: |
+          cd ansible
+          ansible-playbook playbook.yml --skip-tags firewall,never-ci \
+            -e target_user=runner -e ci_mode=true | tee /tmp/idem.log
+          grep -E 'changed=0.*failed=0' /tmp/idem.log
+
+  secret-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: vault files must be encrypted
+        run: |
+          if [ -f ansible/vault/secrets.yml ]; then
+            head -1 ansible/vault/secrets.yml | grep -q '^\$ANSIBLE_VAULT;' \
+              || { echo "ansible/vault/secrets.yml is NOT encrypted!"; exit 1; }
+          fi

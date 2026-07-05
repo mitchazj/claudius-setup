@@ -1,0 +1,52 @@
+---
+- name: Install Tailscale apt signing key
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_facts['distribution_release'] }}.noarmor.gpg"
+    dest: /etc/apt/keyrings/tailscale.gpg
+    mode: "0644"
+
+- name: Add Tailscale apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/tailscale.gpg]
+      https://pkgs.tailscale.com/stable/ubuntu
+      {{ ansible_facts['distribution_release'] }} main
+    filename: tailscale
+    state: present
+
+- name: Install tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+
+- name: Enable tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    state: started
+    enabled: true
+  when: not ci_mode
+
+- name: Check tailscale login state
+  ansible.builtin.command: tailscale status --peers=false
+  register: ts_status
+  changed_when: false
+  failed_when: false
+  when: not ci_mode
+
+- name: Bring tailscale up with auth key (from vault)
+  ansible.builtin.command: tailscale up --authkey "{{ tailscale_authkey }}"
+  when:
+    - not ci_mode
+    - tailscale_authkey | length > 0
+    - ts_status.rc != 0
+  no_log: true
+  tags: [never-ci]
+
+- name: How to authenticate interactively
+  ansible.builtin.debug:
+    msg: "Tailscale installed but not logged in — run: sudo tailscale up (prints a login URL)."
+  when:
+    - not ci_mode
+    - tailscale_authkey | length == 0
+    - ts_status.rc != 0

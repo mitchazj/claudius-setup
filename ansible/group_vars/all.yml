@@ -1,0 +1,42 @@
+---
+# The user to configure on the box. Overridden by bootstrap.sh (-e target_user=...)
+target_user: claudius
+
+# Set true by bootstrap.sh --ci
+ci_mode: false
+
+timezone: Australia/Brisbane
+
+# When true, boots to multi-user.target (no GNOME login screen, saves ~500MB).
+# The desktop stays installed; flip back any time.
+headless: false
+
+# Disable SSH password auth once at least one authorized key is present.
+harden_ssh: true
+
+# ufw: deny incoming, allow SSH + tailscale. Skipped entirely in CI (tag: firewall).
+enable_firewall: true
+
+# Public keys allowed to SSH in as {{ target_user }}. Public keys are safe to commit.
+authorized_pubkeys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPe3cFlDZbABQ1x7Fu+tlbHVy6Stnq1h7hV/shtNBcj2 mitchazj@mac"
+
+base_packages:
+  - git
+  - curl
+  - wget
+  - ca-certificates
+  - gnupg
+  - htop
+  - neovim
+  - tmux
+  - unzip
+  - jq
+  - build-essential
+  - ufw
+  - openssh-server
+  - unattended-upgrades
+
+# --- secrets (real values live in vault/secrets.yml, encrypted) ---
+# Empty default means "skip tailscale auth"; `sudo tailscale up` works interactively too.
+tailscale_authkey: ""

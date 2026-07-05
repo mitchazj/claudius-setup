@@ -1,0 +1,19 @@
+---
+- name: Install Claude Code (native installer) for {{ target_user }}
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL https://claude.ai/install.sh | bash
+  args:
+    creates: "/home/{{ target_user }}/.local/bin/claude"
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+
+- name: Report claude version
+  ansible.builtin.command: "/home/{{ target_user }}/.local/bin/claude --version"
+  register: claude_version
+  changed_when: false
+
+- name: Show claude version
+  ansible.builtin.debug:
+    msg: "claude {{ claude_version.stdout }}"

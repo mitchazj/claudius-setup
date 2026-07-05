@@ -1,0 +1,35 @@
+---
+- name: Ensure authorized keys for {{ target_user }}
+  ansible.posix.authorized_key:
+    user: "{{ target_user }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ authorized_pubkeys }}"
+
+- name: Check that at least one authorized key actually exists
+  ansible.builtin.stat:
+    path: "/home/{{ target_user }}/.ssh/authorized_keys"
+  register: authkeys_stat
+
+- name: Harden sshd (key-only auth) — only when a key is in place
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/50-claudius.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin prohibit-password
+    mode: "0644"
+    validate: "sshd -T -f %s"
+  when:
+    - harden_ssh
+    - authkeys_stat.stat.exists
+    - authkeys_stat.stat.size > 0
+  notify: Restart sshd
+
+- name: Ensure sshd is enabled and running
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: true
+  # GitHub Actions runners manage ssh differently; not worth fighting
+  when: not ci_mode

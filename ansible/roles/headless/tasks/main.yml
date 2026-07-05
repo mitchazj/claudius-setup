@@ -1,0 +1,22 @@
+---
+- name: Check current default systemd target
+  ansible.builtin.command: systemctl get-default
+  register: default_target
+  changed_when: false
+  when: not ci_mode
+
+- name: Boot to multi-user.target (headless — no GNOME login screen)
+  ansible.builtin.command: systemctl set-default multi-user.target
+  when:
+    - not ci_mode
+    - headless
+    - default_target.stdout != "multi-user.target"
+  changed_when: true
+
+- name: Boot to graphical.target (desktop)
+  ansible.builtin.command: systemctl set-default graphical.target
+  when:
+    - not ci_mode
+    - not headless
+    - default_target.stdout == "multi-user.target"
+  changed_when: true

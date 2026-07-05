@@ -1,0 +1,31 @@
+---
+- name: Converge claudius box
+  hosts: all
+  become: true
+
+  pre_tasks:
+    - name: Load vault secrets when a vault password is available
+      block:
+        - name: Include encrypted secrets
+          ansible.builtin.include_vars: "{{ playbook_dir }}/vault/secrets.yml"
+      rescue:
+        - name: Continue without secrets
+          ansible.builtin.debug:
+            msg: >-
+              vault/secrets.yml missing or no vault password available —
+              secret-dependent tasks (tailscale auth) will be skipped.
+      tags: [always]
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: ssh
+      tags: [ssh]
+    - role: docker
+      tags: [docker]
+    - role: tailscale
+      tags: [tailscale]
+    - role: claude-code
+      tags: [claude]
+    - role: headless
+      tags: [headless]
