@@ -1,4 +1,19 @@
 ---
+- name: Ensure sudo-capable target user exists — {{ target_user }}
+  ansible.builtin.user:
+    name: "{{ target_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+
+- name: Passwordless sudo (cloud servers — user has no password at all)
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ target_user }}"
+    content: "{{ target_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+  when: passwordless_sudo
+
 - name: Ensure authorized keys for {{ target_user }}
   ansible.posix.authorized_key:
     user: "{{ target_user }}"
@@ -17,9 +32,11 @@
     state: directory
     mode: "0755"
 
+# 10- prefix: sshd uses the FIRST value it reads, and cloud images ship
+# 50-cloud-init.conf with PasswordAuthentication yes — we must sort earlier.
 - name: Harden sshd (key-only auth) — only when a key is in place
   ansible.builtin.copy:
-    dest: /etc/ssh/sshd_config.d/50-claudius.conf
+    dest: /etc/ssh/sshd_config.d/10-claudius-setup.conf
     content: |
       PasswordAuthentication no
       KbdInteractiveAuthentication no

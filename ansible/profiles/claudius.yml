@@ -1,0 +1,7 @@
+---
+# The home box: Lenovo ThinkCentre M900 on the LAN.
+timezone: Australia/Brisbane
+headless: false
+passwordless_sudo: false        # claudius has a real password (1Password)
+install_coolify: false          # flip to true when ready — see README
+coolify_ui_lan: true            # when coolify is on, expose :8000 to the LAN

@@ -16,6 +16,9 @@ jobs:
       - name: ansible-lint
         run: |
           pipx install ansible-lint
+          # ansible-lint's venv only has ansible-core; add full ansible for the
+          # community.general / ansible.posix collections our roles use
+          pipx inject ansible-lint ansible
           cd ansible && ansible-lint
 
   converge:

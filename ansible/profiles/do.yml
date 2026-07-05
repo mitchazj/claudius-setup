@@ -1,0 +1,7 @@
+---
+# DigitalOcean droplet (or any cloud VPS): key-only user, no desktop, Coolify on.
+timezone: Etc/UTC
+headless: true                  # no-op on server images, explicit anyway
+passwordless_sudo: true         # cloud user has no password; sudo must not prompt
+install_coolify: true
+coolify_ui_lan: false           # public box: UI reachable via tailscale/SSH tunnel only

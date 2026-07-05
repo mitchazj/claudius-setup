@@ -37,6 +37,13 @@ base_packages:
   - openssh-server
   - unattended-upgrades
 
+# Cloud-server user has no password; sudo must not prompt. Profiles override.
+passwordless_sudo: false
+
+# Coolify (self-hosted PaaS). Off by default; profiles opt in.
+install_coolify: false
+coolify_ui_lan: false
+
 # --- secrets (real values live in vault/secrets.yml, encrypted) ---
 # Empty default means "skip tailscale auth"; `sudo tailscale up` works interactively too.
 tailscale_authkey: ""

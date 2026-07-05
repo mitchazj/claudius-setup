@@ -11,11 +11,13 @@
 #   ./bootstrap.sh --local .
 #
 # Flags:
-#   --local <dir>   use an existing checkout instead of cloning
-#   --ci            CI/test mode: skips tags that need secrets or real hardware
-#   --user <name>   target user to configure (default: invoking user)
-#   --tags <t>      only run these ansible tags
-#   --skip-tags <t> additionally skip these ansible tags
+#   --local <dir>     use an existing checkout instead of cloning
+#   --ci              CI/test mode: skips tags that need secrets or real hardware
+#   --user <name>     target user to configure (default: invoking user)
+#   --profile <name>  machine profile from ansible/profiles/ (default: claudius;
+#                     use "do" for DigitalOcean droplets)
+#   --tags <t>        only run these ansible tags
+#   --skip-tags <t>   additionally skip these ansible tags
 set -euo pipefail
 
 REPO_URL="${CLAUDIUS_SETUP_REPO:-https://github.com/mitchazj/claudius-setup.git}"
@@ -24,7 +26,9 @@ CHECKOUT_DIR="${CLAUDIUS_SETUP_DIR:-$HOME/claudius-setup}"
 
 LOCAL_DIR=""
 CI_MODE=0
-TARGET_USER="${SUDO_USER:-$USER}"
+# id -un fallback matters: systemd units (first-boot) have neither SUDO_USER nor USER
+TARGET_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+PROFILE="claudius"
 ONLY_TAGS=""
 SKIP_TAGS=""
 
@@ -33,6 +37,7 @@ while [ $# -gt 0 ]; do
     --local) LOCAL_DIR="$2"; shift 2 ;;
     --ci) CI_MODE=1; shift ;;
     --user) TARGET_USER="$2"; shift 2 ;;
+    --profile) PROFILE="$2"; shift 2 ;;
     --tags) ONLY_TAGS="$2"; shift 2 ;;
     --skip-tags) SKIP_TAGS="$2"; shift 2 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
@@ -66,7 +71,10 @@ else
   git clone --branch "$BRANCH" "$REPO_URL" "$CHECKOUT_DIR"
 fi
 
-PLAY_ARGS=(-e "target_user=$TARGET_USER")
+PROFILE_FILE="$CHECKOUT_DIR/ansible/profiles/$PROFILE.yml"
+[ -f "$PROFILE_FILE" ] || { echo "unknown profile: $PROFILE (no $PROFILE_FILE)" >&2; exit 2; }
+
+PLAY_ARGS=(-e "target_user=$TARGET_USER" -e "@$PROFILE_FILE")
 
 if [ "$CI_MODE" -eq 1 ]; then
   # firewall: ufw rules can break CI runner / container networking
@@ -78,11 +86,19 @@ fi
 [ -n "$ONLY_TAGS" ] && PLAY_ARGS+=(--tags "$ONLY_TAGS")
 [ -n "$SKIP_TAGS" ] && PLAY_ARGS+=(--skip-tags "$SKIP_TAGS")
 
+# hook for tests: CLAUDIUS_EXTRA_VARS="-e install_coolify=true"
+if [ -n "${CLAUDIUS_EXTRA_VARS:-}" ]; then
+  # shellcheck disable=SC2206
+  PLAY_ARGS+=($CLAUDIUS_EXTRA_VARS)
+fi
+
 # Use the vault password from 1Password when available, otherwise run
 # without secrets (secret-dependent tasks self-skip on empty defaults).
+# timeout: op can hang on an approval popup when nobody is at the desk
 if [ -f "$HOME/.claudius-vault-pass" ]; then
   PLAY_ARGS+=(--vault-password-file "$HOME/.claudius-vault-pass")
-elif command -v op >/dev/null 2>&1 && op item get "claudius-setup ansible vault" >/dev/null 2>&1; then
+elif command -v op >/dev/null 2>&1 \
+    && timeout 5 op item get "claudius-setup ansible vault" >/dev/null 2>&1; then
   PLAY_ARGS+=(--vault-password-file "$CHECKOUT_DIR/scripts/vault-pass.sh")
 fi
 

@@ -5,6 +5,7 @@
 
   pre_tasks:
     - name: Load vault secrets when a vault password is available
+      tags: [always]
       block:
         - name: Include encrypted secrets
           ansible.builtin.include_vars: "{{ playbook_dir }}/vault/secrets.yml"
@@ -14,7 +15,6 @@
             msg: >-
               vault/secrets.yml missing or no vault password available —
               secret-dependent tasks (tailscale auth) will be skipped.
-      tags: [always]
 
   roles:
     - role: base
@@ -25,7 +25,9 @@
       tags: [docker]
     - role: tailscale
       tags: [tailscale]
-    - role: claude-code
+    - role: claude_code
       tags: [claude]
+    - role: coolify
+      tags: [coolify]
     - role: headless
       tags: [headless]

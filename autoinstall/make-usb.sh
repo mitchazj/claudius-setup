@@ -49,6 +49,7 @@ PASSWORD_HASH=$(printf '%s' "$PASSWORD" | openssl passwd -6 -stdin)
 mkdir -p "$OUT_DIR"
 export PASSWORD_HASH WIFI_SSID WIFI_PSK
 # envsubst with an explicit variable list so yaml ${...} elsewhere is untouched
+# shellcheck disable=SC2016  # the single-quoted ${...} names are envsubst syntax
 envsubst '${PASSWORD_HASH} ${WIFI_SSID} ${WIFI_PSK}' \
   < user-data.tmpl > "$OUT_DIR/user-data"
 touch "$OUT_DIR/meta-data"   # required by the NoCloud datasource, may be empty

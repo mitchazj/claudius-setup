@@ -20,7 +20,9 @@ ISO="${1:?usage: $0 <ubuntu-live-server.iso>}"
 DISK="claudius-test.qcow2"
 SEED="seed.iso"
 
-[ -f user-data ] && [ -f meta-data ] || { echo "user-data/meta-data missing (render with make-usb.sh)"; exit 1; }
+if [ ! -f user-data ] || [ ! -f meta-data ]; then
+  echo "user-data/meta-data missing (render with make-usb.sh)"; exit 1
+fi
 
 cloud-localds "$SEED" user-data meta-data
 qemu-img create -f qcow2 "$DISK" 40G

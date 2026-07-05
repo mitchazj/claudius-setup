@@ -63,7 +63,7 @@ autoinstall:
 
       [Service]
       Type=oneshot
-      ExecStart=/home/claudius/claudius-setup/bootstrap.sh --local /home/claudius/claudius-setup --user claudius
+      ExecStart=/home/claudius/claudius-setup/bootstrap.sh --local /home/claudius/claudius-setup --user claudius --profile claudius
       ExecStartPost=/usr/bin/systemctl disable claudius-firstboot.service
       RemainAfterExit=yes
       TimeoutStartSec=1800

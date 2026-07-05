@@ -1,8 +1,13 @@
 # claudius-setup
 
 Reproducible setup for the **claudius** home server (Lenovo ThinkCentre M900,
-Ubuntu 24.04, `192.168.1.22`). If the box dies, gets reflashed, or moves house,
-this repo recreates it from a blank disk with (almost) one command.
+Ubuntu 24.04, `192.168.1.22`) — and for any Ubuntu server that should look
+like it, including DigitalOcean droplets. If a box dies, gets reflashed, or
+moves house, this repo recreates it from a blank disk with (almost) one command.
+
+Machine differences live in **profiles** (`ansible/profiles/*.yml`):
+`claudius` (home box: desktop kept, LAN conveniences) and `do` (cloud VPS:
+key-only, headless, Coolify on, dashboard not public).
 
 ```
 ┌─ Layer 0: reflash ────────────────────────────────────────────┐
@@ -32,7 +37,31 @@ curl -fsSL https://raw.githubusercontent.com/mitchazj/claudius-setup/main/bootst
 ```
 
 Change what the machine *is* by editing `ansible/group_vars/all.yml`
-(packages, `headless: true`, firewall, authorized keys) and re-running.
+(shared: packages, firewall, authorized keys) or its profile in
+`ansible/profiles/` (per-machine: headless, coolify, sudo policy) and re-running.
+
+## DigitalOcean (or any cloud VPS)
+
+Create a droplet (Ubuntu 24.04 x64) with `digitalocean/user-data.yml` pasted
+into "User data" — it creates the user and runs the bootstrap with
+`--profile do` on first boot. Or by hand on any existing server:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/mitchazj/claudius-setup/main/bootstrap.sh \
+  | bash -s -- --profile do
+```
+
+The `do` profile is key-only SSH + ufw + docker + tailscale + **Coolify**,
+with the Coolify dashboard reachable only via tailscale or an SSH tunnel
+(`ssh -L 8000:localhost:8000 <host>`), never the public internet.
+
+## Coolify
+
+The `coolify` role installs Coolify v4 via its official installer, opens
+80/443 for hosted sites, and health-checks the dashboard. Off by default on
+the home box — enable by setting `install_coolify: true` in
+`ansible/profiles/claudius.yml` and re-running bootstrap. Coolify's own data
+lives in `/data/coolify` (back this up; it is state, not config).
 
 ## Reflashing from scratch
 

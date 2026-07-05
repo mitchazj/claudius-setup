@@ -5,12 +5,19 @@
 # Note: OrbStack VMs are arm64 — great for catching arch assumptions, but the
 # real x86_64 test is CI / the KVM rehearsal.
 #
-#   ./test/orbstack-test.sh           # full cycle, deletes VM on success
-#   KEEP_VM=1 ./test/orbstack-test.sh # leave the VM around for poking
+#   ./test/orbstack-test.sh                    # full cycle, deletes VM on success
+#   KEEP_VM=1 ./test/orbstack-test.sh          # leave the VM around for poking
+#   INCLUDE_COOLIFY=1 ./test/orbstack-test.sh  # also install+verify Coolify (slow, ~GBs)
 set -euo pipefail
 
 VM="claudius-test"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+EXTRA_VARS=""
+VERIFY_ENV=""
+if [ -n "${INCLUDE_COOLIFY:-}" ]; then
+  EXTRA_VARS="-e install_coolify=true"
+  VERIFY_ENV="CHECK_COOLIFY=1"
+fi
 
 echo "==> recreating VM $VM (ubuntu:noble)"
 orb delete -f "$VM" >/dev/null 2>&1 || true
@@ -19,13 +26,13 @@ orb create ubuntu:noble "$VM"
 run() { orb -m "$VM" -u "$(whoami)" bash -c "$*"; }
 
 echo "==> run 1: bootstrap (should converge)"
-run "cd '$REPO_DIR' && ./bootstrap.sh --local '$REPO_DIR' --ci --user \$(whoami)"
+run "cd '$REPO_DIR' && CLAUDIUS_EXTRA_VARS='$EXTRA_VARS' ./bootstrap.sh --local '$REPO_DIR' --ci --user \$(whoami)"
 
 echo "==> verify"
-run "cd '$REPO_DIR' && sudo TARGET_USER=\$(whoami) ./test/verify.sh --ci"
+run "cd '$REPO_DIR' && sudo $VERIFY_ENV TARGET_USER=\$(whoami) ./test/verify.sh --ci"
 
 echo "==> run 2: idempotence (expect changed=0)"
-run "cd '$REPO_DIR/ansible' && ansible-playbook playbook.yml --skip-tags firewall,never-ci -e target_user=\$(whoami) -e ci_mode=true | tee /tmp/idem.log; grep -E 'changed=0.*failed=0' /tmp/idem.log"
+run "cd '$REPO_DIR/ansible' && ansible-playbook playbook.yml --skip-tags firewall,never-ci -e target_user=\$(whoami) -e ci_mode=true -e @profiles/claudius.yml $EXTRA_VARS | tee /tmp/idem.log; grep -E 'changed=0.*failed=0' /tmp/idem.log"
 
 if [ -z "${KEEP_VM:-}" ]; then
   echo "==> cleaning up"

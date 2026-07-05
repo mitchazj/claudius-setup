@@ -1,0 +1,22 @@
+#cloud-config
+# Paste this as "User data" when creating a DigitalOcean droplet
+# (Ubuntu 24.04 x64 image), or pass via: doctl compute droplet create
+#   --user-data-file digitalocean/user-data.yml ...
+#
+# The droplet creates the user, then converges itself with the "do" profile:
+# key-only SSH, ufw, docker, tailscale (interactive auth), Coolify.
+# Watch progress: ssh in and `tail -f /var/log/cloud-init-output.log`.
+users:
+  - name: claudius
+    shell: /bin/bash
+    groups: [sudo]
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPe3cFlDZbABQ1x7Fu+tlbHVy6Stnq1h7hV/shtNBcj2 mitchazj@mac"
+
+package_update: true
+
+runcmd:
+  - >-
+    curl -fsSL https://raw.githubusercontent.com/mitchazj/claudius-setup/main/bootstrap.sh
+    | bash -s -- --user claudius --profile do

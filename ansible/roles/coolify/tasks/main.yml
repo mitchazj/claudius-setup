@@ -1,0 +1,40 @@
+---
+# Coolify v4 — self-hosted PaaS (https://coolify.io). Its installer is the
+# supported path and handles its own docker-compose stack under /data/coolify.
+- name: Install Coolify
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+  args:
+    creates: /data/coolify/source/docker-compose.yml
+    executable: /bin/bash
+  when: install_coolify
+
+- name: Firewall — allow HTTP/HTTPS for Coolify-hosted sites
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: ["80", "443"]
+  when: install_coolify and enable_firewall
+  tags: [firewall]
+
+# The dashboard (:8000) is NOT exposed publicly by default — reach it over
+# tailscale (tailscale0 is already allowed) or `ssh -L 8000:localhost:8000`.
+- name: Firewall — expose Coolify dashboard to the local network
+  community.general.ufw:
+    rule: allow
+    port: "8000"
+    proto: tcp
+  when: install_coolify and enable_firewall and coolify_ui_lan
+  tags: [firewall]
+
+- name: Wait for Coolify to come up
+  ansible.builtin.uri:
+    url: http://localhost:8000/api/health
+    status_code: 200
+  register: coolify_health
+  retries: 30
+  delay: 5
+  until: coolify_health.status == 200
+  when: install_coolify

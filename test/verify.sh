@@ -33,6 +33,11 @@ check "tailscale installed"      command -v tailscale
 
 check "claude installed for $TARGET_USER" sudo -u "$TARGET_USER" test -x "/home/$TARGET_USER/.local/bin/claude"
 
+if [ "${CHECK_COOLIFY:-0}" = "1" ]; then
+  check "coolify stack present"  test -f /data/coolify/source/docker-compose.yml
+  check "coolify healthy"        curl -fsS http://localhost:8000/api/health
+fi
+
 check "unattended-upgrades config" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 
 if [ "$CI_MODE" -eq 0 ]; then

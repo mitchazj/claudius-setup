@@ -36,6 +36,7 @@
 
 - name: Bring tailscale up with auth key (from vault)
   ansible.builtin.command: tailscale up --authkey "{{ tailscale_authkey }}"
+  changed_when: true
   when:
     - not ci_mode
     - tailscale_authkey | length > 0

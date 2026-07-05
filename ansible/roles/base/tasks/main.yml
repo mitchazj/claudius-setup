@@ -22,6 +22,7 @@
   community.general.ufw:
     rule: allow
     name: OpenSSH
+  when: enable_firewall
   tags: [firewall]
 
 - name: Firewall — allow everything on the tailscale interface
@@ -29,6 +30,7 @@
     rule: allow
     interface: tailscale0
     direction: in
+  when: enable_firewall
   tags: [firewall]
 
 - name: Firewall — enable, default deny incoming
