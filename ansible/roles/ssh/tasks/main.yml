@@ -24,7 +24,7 @@
 - name: Check that at least one authorized key actually exists
   ansible.builtin.stat:
     path: "/home/{{ target_user }}/.ssh/authorized_keys"
-  register: authkeys_stat
+  register: ssh_authkeys_stat
 
 - name: Ensure sshd privilege separation dir exists (sshd -T validation needs it)
   ansible.builtin.file:
@@ -45,8 +45,8 @@
     validate: "sshd -T -f %s"
   when:
     - harden_ssh
-    - authkeys_stat.stat.exists
-    - authkeys_stat.stat.size > 0
+    - ssh_authkeys_stat.stat.exists
+    - ssh_authkeys_stat.stat.size > 0
   notify: Restart sshd
 
 - name: Ensure sshd is enabled and running

@@ -4,7 +4,7 @@
 # To restore the desktop on the box: sudo systemctl set-default graphical.target
 - name: Check current default systemd target
   ansible.builtin.command: systemctl get-default  # noqa: command-instead-of-module (no module reads the default target)
-  register: default_target
+  register: headless_default_target
   changed_when: false
   when: not ci_mode
 
@@ -13,5 +13,5 @@
   when:
     - not ci_mode
     - headless
-    - default_target.stdout != "multi-user.target"
+    - headless_default_target.stdout != "multi-user.target"
   changed_when: true

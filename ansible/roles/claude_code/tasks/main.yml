@@ -11,9 +11,9 @@
 
 - name: Report claude version
   ansible.builtin.command: "/home/{{ target_user }}/.local/bin/claude --version"
-  register: claude_version
+  register: claude_code_version
   changed_when: false
 
 - name: Show claude version
   ansible.builtin.debug:
-    msg: "claude {{ claude_version.stdout }}"
+    msg: "claude {{ claude_code_version.stdout }}"

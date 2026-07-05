@@ -44,10 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # run the binary directly over the FULL history — gitleaks-action derives
+      # a commit range from the push event, which breaks on a repo's first push
+      # (root commit has no parent) and silently narrows later scans
+      - name: gitleaks (full history)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git . --redact --verbose
       - name: vault files must be encrypted
         run: |
           if [ -f ansible/vault/secrets.yml ]; then
