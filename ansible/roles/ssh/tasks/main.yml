@@ -11,6 +11,12 @@
     path: "/home/{{ target_user }}/.ssh/authorized_keys"
   register: authkeys_stat
 
+- name: Ensure sshd privilege separation dir exists (sshd -T validation needs it)
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    mode: "0755"
+
 - name: Harden sshd (key-only auth) — only when a key is in place
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/50-claudius.conf
